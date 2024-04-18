@@ -1,0 +1,1 @@
+[18-Mar-2024 05:12:15 UTC] PHP Fatal error:  Composer detected issues in your platform: Your Composer dependencies require a PHP version ">= 8.2.0". You are running 7.4.33. in /home2/alshamal/testapaai.alshamalaljanoubiinstitute.com/vendor/composer/platform_check.php on line 24
