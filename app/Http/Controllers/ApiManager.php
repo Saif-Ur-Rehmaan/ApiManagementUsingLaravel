@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\Gift;
+use App\Models\GiftCard;
+use App\Models\Notification;
 use DateTime;
 use Exception;
 use GuzzleHttp\Psr7\Response;
@@ -11,7 +14,7 @@ use Illuminate\Support\Facades\Hash;
 
 class ApiManager extends Controller
 {
-    
+
     /*
     0=>error,
     1=>Success,
@@ -26,7 +29,7 @@ class ApiManager extends Controller
     public function GetAllUsers(Response $response)
     {
         $users = User::all();
-        return response()->json(["data"=>$users,"status"=>'1']);
+        return response()->json(["data" => $users, "status" => '1']);
     }
 
     // Retrieve a specific user by ID
@@ -36,9 +39,9 @@ class ApiManager extends Controller
         $id = $requestData['id'];
         $user = User::find($id);
         if (!$user) {
-            return response()->json(['error' => 'User not found',"status"=>'3'], 404);
+            return response()->json(['error' => 'User not found', "status" => '3'], 404);
         }
-        return response()->json(["data"=>$user,"status"=>'1']);
+        return response()->json(["data" => $user, "status" => '1']);
     }
 
     // Create a new user
@@ -52,7 +55,7 @@ class ApiManager extends Controller
             //verifying uniqueness
             $isExist = User::where('User_Email', $requestData['User_Email'])->exists();
             if ($isExist) {
-                return response()->json(['message' => "Duplicate entry","status"=>'2'], 409);
+                return response()->json(['message' => "Duplicate entry", "status" => '2'], 409);
             }
             // Create a new user instance
             $user = new User();
@@ -85,7 +88,7 @@ class ApiManager extends Controller
             $id = $requestData['id'];
             $user = User::find($id);
             if (!$user) {
-                return response()->json(['error' => 'User not found',"status"=>'3'], 404);
+                return response()->json(['error' => 'User not found', "status" => '3'], 404);
             }
 
             $user->id = $requestData['id'];
@@ -96,54 +99,74 @@ class ApiManager extends Controller
             $user->User_Phone = $requestData['User_Phone'];
             $user->User_DOB = $requestData['User_DOB'];
             $user->save();
-            return response()->json(["data"=>$user,"status"=>'1'], 200);
+            return response()->json(["data" => $user, "status" => '1'], 200);
         } catch (Exception $e) {
-            return response()->json(['error' => $e->getMessage(),"status"=>'0'], 200);
+            return response()->json(['error' => $e->getMessage(), "status" => '0'], 200);
         }
     }
 
     // Delete a user
     public function DeleteUser($id)
     {
-         
+
         $user = User::find($id);
         if (!$user) {
-            return response()->json(['error' => 'User not found',"status"=>'3'], 404);
+            return response()->json(['error' => 'User not found', "status" => '3'], 404);
         }
 
         $user->delete();
 
-        return response()->json(['message' => 'User deleted',"status"=>'1'], 200);
+        return response()->json(['message' => 'User deleted', "status" => '1'], 200);
     }
-    
-     public function LoginUser(Request $request)
-    { 
-            try {
-                // Retrieve JSON data from the request
-                $requestData = $request->json()->all();
-                
-                // Retrieve the email from the request data
-                $email = $requestData["User_Email"];
-                
-                // Retrieve the user record by email
-                $user = User::where("User_Email", $email)->first();
-                
-                // If user exists and password matches
 
-               if ($user && Hash::check($requestData["User_Password"],  $user->User_Password)) {
-                    return response()->json(['status' => '1', 'message' => 'User authenticated successfully', 'user' => $user], 200);
-                }
-                // If user does not exist or password doesn't match, return failure response
-                return response()->json(['status' => '3', 'message' => 'Invalid email or password'], 200);
-                
-            } catch (Exception $e) {
-                // If an exception occurs, return error response
-                return response()->json(['status' => '0', 'error' => $e->getMessage()], 500);
+    public function LoginUser(Request $request)
+    {
+        try {
+            // Retrieve JSON data from the request
+            $requestData = $request->json()->all();
+
+            // Retrieve the email from the request data
+            $email = $requestData["User_Email"];
+
+            // Retrieve the user record by email
+            $user = User::where("User_Email", $email)->first();
+
+            // If user exists and password matches
+
+            if ($user && Hash::check($requestData["User_Password"],  $user->User_Password)) {
+                return response()->json(['status' => '1', 'message' => 'User authenticated successfully', 'user' => $user], 200);
             }
+            // If user does not exist or password doesn't match, return failure response
+            return response()->json(['status' => '3', 'message' => 'Invalid email or password'], 200);
+        } catch (Exception $e) {
+            // If an exception occurs, return error response
+            return response()->json(['status' => '0', 'error' => $e->getMessage()], 500);
+        }
     }
+
+
     
-    
-     public function ForgotPassword(Request $request)
+
+    public function ChangePassword(Request $request)
+    {
+        $requestData = $request->json()->all();
+        $Email = $requestData['User_Email'];
+        $Pass = $requestData['User_Password'];
+        $EncPass = bcrypt($Pass);
+        try {
+            $user = User::where("User_Email", $Email)->first();
+            if (!$user) {
+                return response()->json(['error' => 'User not found', "status" => '3'], 404);
+            }
+            $user->User_Password = $EncPass;
+            $user->save();
+            return response()->json(['status' => '1', 'data' => $user], 200);
+        } catch (Exception $e) {
+            return response()->json(['status' => '0', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function ForgotPassword(Request $request)
     {
         try {
             $requestData = $request->json()->all();
@@ -163,7 +186,7 @@ class ApiManager extends Controller
             } // Generate a random OTP of 6 characters
 
             // Send OTP to the user's email
-              $url = 'https://api.elasticemail.com/v2/email/send';
+            $url = 'https://api.elasticemail.com/v2/email/send';
 
 
             $post = array(
@@ -189,38 +212,72 @@ class ApiManager extends Controller
 
             $result = curl_exec($ch);
             curl_close($ch);
- 
-            
- 
+
+
+
 
 
             return response()->json(['data' => $user, 'status' => '1', 'mail' => json_decode($result), 'otp' => $otp], 200);
 
             // You may also store the OTP in the database for verification purposes
 
-            return response()->json(['data' => $user, 'status' => '1', 'otp' => $otp ], 200);
+            return response()->json(['data' => $user, 'status' => '1', 'otp' => $otp], 200);
         } catch (Exception $e) {
             return response()->json(['error' => $e->getMessage(), 'status' => '0'], 500);
         }
     }
-    
-    public function ChangePassword(Request $request){
-        $requestData=$request->json()->all();
-        $Email=$requestData['User_Email'];
-        $Pass=$requestData['User_Password'];
-        $EncPass=bcrypt($Pass);
-        try{
-            $user = User::where("User_Email", $Email)->first();
-            if (!$user) {
-                return response()->json(['error' => 'User not found',"status"=>'3'], 404);
-            }
-            $user->User_Password=$EncPass;
-            $user->save();
-              return response()->json(['status' => '1', 'data' => $user], 200);
-        }catch(Exception $e){
-           return response()->json(['status' => '0', 'error' => $e->getMessage()], 500);
+
+    public function GetAvailableGiftCards(){
+        try { 
+            
+            $giftCards=GiftCard::where("GC_IsAvailable","Available")->get();
+            return  $giftCards
+                 ;
+        } catch (Exception $e) {
+            return response()->json(['status' => '0', 'error' => $e->getMessage()], 500);
+            
         }
     }
+    public function GetAvailableGifts(Request $req)
+    {
+        try {
+            $UserId = $req->json()->all()["UserId"];
+            $user = User::all()->where("id", $UserId)->first();
+            $UserAvailedGiftsids = json_decode($user->UserAvailedGifts)->id;
     
+            $res = Gift::where('Gift_IsAvailable', "Available")->whereNotIn("Gift_Id", $UserAvailedGiftsids)->get();
     
+            return response()->json([
+                "data" => [
+                    "Gifts" => $res,
+                    "GiftCards" => $this->GetAvailableGiftCards(),
+                    "UserPoints"=>$user->User_Points
+                ],
+                "status" => 1
+            ]);
+        } catch (Exception $e) {
+            return response()->json(['status' => '0', 'error' => $e->getMessage()], 500);
+            
+        }
+    }
+
+
+    public function GetNotificationsOfUser(Request $req){
+   
+        try {
+            $UserId = $req->json()->all()["UserId"];
+            $userNotifications = Notification::where("UserId", $UserId)->get();
+          
+            $res = $userNotifications;
+    
+            return response()->json([
+                "data" => $res,
+                "status" => 1
+            ]);
+        } catch (Exception $e) {
+            return response()->json(['status' => '0', 'error' => $e->getMessage()], 500);
+            
+        }
+    }
+
 }

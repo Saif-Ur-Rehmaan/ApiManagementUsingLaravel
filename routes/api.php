@@ -44,6 +44,15 @@ Route::group(['prefix' => '/users'], function () {
     
     // Delete a user
     Route::delete('/delete/{id}', [ApiManager::class, 'DeleteUser']);
+
+
+
+    Route::post('/GetAvailableGifts',[ApiManager::class,'GetAvailableGifts']);
+    Route::post('/GetNotifications',[ApiManager::class,'GetNotificationsOfUser']);
+
+
+
+
 });
 Route::group(['prefix' => '/franchises'],function (){
     Route::get('/',[FranchisApiManager::class,'GetAllFranchise']);
